@@ -1,0 +1,33 @@
+{
+  "compilerOptions": {
+    // Target and module settings
+    "target": "ESNext",
+    "module": "commonjs",
+    "moduleResolution": "node",
+
+    // Directory structure
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "baseUrl": "./",
+
+    // TypeScript features
+    "strict": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Performance and output
+    "removeComments": true,
+    "sourceMap": false,
+
+    // Type definitions
+    "typeRoots": ["node_modules/@types"]
+  },
+  "files": ["src/app.ts"], // Entry point
+  "include": ["**/*.ts"], // Include all TypeScript files in the project
+  "exclude": ["node_modules", "dist"] // Exclude unnecessary files
+}
