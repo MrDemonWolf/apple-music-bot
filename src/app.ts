@@ -54,6 +54,7 @@ interface MusicData {
  */
 const TWITCH_USERNAME = env.TWITCH_USERNAME;
 const TWITCH_OAUTH = env.TWITCH_OAUTH;
+const TWITCH_CHANNEL = ["#mrdemonwolf"];
 
 /**
  * Connect to the database
@@ -74,7 +75,7 @@ const client = new tmi.Client({
     username: TWITCH_USERNAME,
     password: TWITCH_OAUTH,
   },
-  channels: ["mrdemonwolf"],
+  channels: TWITCH_CHANNEL,
 });
 
 client.connect();
