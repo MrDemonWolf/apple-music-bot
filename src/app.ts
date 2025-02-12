@@ -87,7 +87,11 @@ client.on("message", async (channel, tags, message, self) => {
   if (
     multiCommandAliases.some((alias) => message.toLowerCase().includes(alias))
   ) {
-    const currentSong = await prisma.playedSongs.findFirst({});
+    const currentSong = await prisma.playedSongs.findFirst({
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
     if (!currentSong)
       return client.say(
         channel,
