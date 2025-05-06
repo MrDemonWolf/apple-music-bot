@@ -54,7 +54,7 @@ interface MusicData {
  */
 const TWITCH_USERNAME = env.TWITCH_USERNAME;
 const TWITCH_OAUTH = env.TWITCH_OAUTH;
-const TWITCH_CHANNEL = ["#mrdemonwolf"];
+const TWITCH_CHANNEL = [env.TWITCH_CHANNEL];
 
 /**
  * Connect to the database
@@ -83,6 +83,12 @@ client.connect();
 client.on("message", async (channel, tags, message, self) => {
   if (self) return;
 
+  /**
+   * This is a command to get the current song playing
+   * with aliases like "song", "music", "track", "nowplaying"
+   * returns "Now Playing: <song name> by <artist> from the album <album> | URL: <url>"
+   * It also checks if the song is in the database
+   */
   const multiCommandAliases = ["song", "music", "track", "nowplaying"];
   if (
     multiCommandAliases.some((alias) => message.toLowerCase().includes(alias))
@@ -103,7 +109,11 @@ client.on("message", async (channel, tags, message, self) => {
     );
   }
 
-  // now one for last song with mutli aliases
+  /**
+   * This is a command to get the last song played
+   * with aliases like "lastsong", "lasttrack", "lastmusic"
+   * returns "Last Played: <song name> by <artist> from the album <album> | URL: <url>"
+   */
   const lastSongAliases = ["lastsong", "lasttrack", "lastmusic"];
   if (lastSongAliases.some((alias) => message.toLowerCase().includes(alias))) {
     const lastSongData = await prisma.playedSongs.findMany({

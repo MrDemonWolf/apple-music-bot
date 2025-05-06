@@ -15,6 +15,6 @@ model PlayedSongs {
   name      String
   artist    String
   album     String
-  url       String
+  url       String?  @default("No URL provided")
   createdAt DateTime @default(now())
 }

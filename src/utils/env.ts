@@ -12,6 +12,7 @@ const envSchema = z.object({
   TWITCH_OAUTH: z
     .string()
     .refine((id) => id.startsWith("oauth:"), "Invalid Twitch OAuth token"),
+  TWITCH_CHANNEL: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
