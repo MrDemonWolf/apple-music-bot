@@ -1,50 +1,53 @@
 import tmi from "tmi.js";
+import consola from "consola"; // Import consola
 import { env } from "./utils/env";
 import { prismaConnect, prisma } from "./database";
+import { io } from "socket.io-client";
 
 /**
  * Type for cider player data
  */
 interface Artwork {
   width: number;
-  height: number;
   url: string;
+  height: number;
+  textColor3: string;
+  textColor2: string;
+  textColor4: string;
+  textColor1: string;
+  bgColor: string;
+  hasP3: boolean;
 }
 
 interface PlayParams {
   id: string;
   kind: string;
+  isLibrary: boolean;
+  reporting: boolean;
+  catalogId: string;
+  reportingId: string;
 }
 
-interface Preview {
-  // Define the structure of the preview object if known
-  // For example, if it has properties like url and duration, you can define them here
-  url: string; // Example property
-  durationInMillis: number; // Example property
-}
+// Based on the provided data, the preview object is empty.
+// If there are actual properties in the preview, you would add them here.
+interface Preview {}
 
-interface MusicData {
-  hasTimeSyncedLyrics: boolean;
+interface TrackData {
   albumName: string;
-  genreNames: string[];
-  trackNumber: number;
-  durationInMillis: number;
-  releaseDate: string; // ISO 8601 format
-  isVocalAttenuationAllowed: boolean;
-  isMasteredForItunes: boolean;
-  isrc: string;
-  artwork: Artwork;
-  composerName: string;
-  audioLocale: string;
-  url: string;
-  playParams: PlayParams;
   discNumber: number;
-  isAppleDigitalMaster: boolean;
+  genreNames: string[];
   hasLyrics: boolean;
-  audioTraits: string[];
+  trackNumber: number;
+  releaseDate: string;
+  durationInMillis: number;
   name: string;
-  previews: Preview[]; // Array of preview objects
   artistName: string;
+  contentRating: string;
+  artwork: Artwork;
+  playParams: PlayParams;
+  composerName?: string;
+  isrc?: string;
+  previews: Preview[];
   currentPlaybackTime: number;
   remainingTime: number;
 }
@@ -54,7 +57,7 @@ interface MusicData {
  */
 const TWITCH_USERNAME = env.TWITCH_USERNAME;
 const TWITCH_OAUTH = env.TWITCH_OAUTH;
-const TWITCH_CHANNEL = [env.TWITCH_CHANNEL];
+const TWITCH_CHANNEL = env.TWITCH_CHANNEL;
 
 /**
  * Connect to the database
@@ -69,79 +72,121 @@ async function purgeOldSongs() {
 }
 
 purgeOldSongs();
+
 const client = new tmi.Client({
   options: { debug: true },
   identity: {
     username: TWITCH_USERNAME,
     password: TWITCH_OAUTH,
   },
-  channels: TWITCH_CHANNEL,
+  channels: [TWITCH_CHANNEL],
 });
 
 client.connect();
 
+const prefix = "!";
+
 client.on("message", async (channel, tags, message, self) => {
   if (self) return;
 
-  /**
-   * This is a command to get the current song playing
-   * with aliases like "song", "music", "track", "nowplaying"
-   * returns "Now Playing: <song name> by <artist> from the album <album> | URL: <url>"
-   * It also checks if the song is in the database
-   */
-  const multiCommandAliases = ["song", "music", "track", "nowplaying"];
-  if (
-    multiCommandAliases.some((alias) => message.toLowerCase().includes(alias))
-  ) {
-    const currentSong = await prisma.playedSongs.findFirst({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-    if (!currentSong)
-      return client.say(
-        channel,
-        `No song is currently playing or it has not been added to the database.`
+  const lowerCaseMessage = message.toLowerCase().trim();
+
+  const isCommand = lowerCaseMessage.startsWith(prefix);
+
+  if (!isCommand) return;
+
+  // Extract the command
+  const args = lowerCaseMessage.slice(prefix.length).split(" ");
+  const command = args.shift();
+
+  switch (command) {
+    case "song":
+    case "music":
+    case "track":
+    case "nowplaying":
+      /**
+       * This is a command to get the current song playing
+       * with aliases like "song", "music", "track", "nowplaying"
+       * returns "Now Playing: <song name> by <artist> from the album <album> | URL: <url>"
+       * It also checks if the song is in the database
+       */
+      try {
+        const currentSong = await prisma.playedSongs.findFirst({
+          orderBy: {
+            createdAt: "desc",
+          },
+        });
+        if (!currentSong) {
+          client.say(
+            channel,
+            `No song is currently playing or it has not been added to the database.`
+          );
+        } else {
+          client.say(
+            channel,
+            `Now Playing: ${currentSong.name} by ${currentSong.artist} from the album ${currentSong.album} | URL: ${currentSong.url}`
+          );
+        }
+      } catch (error) {
+        consola.error("Error fetching current song:", error);
+        client.say(
+          channel,
+          `An error occurred while fetching the current song. Please try again later.`
+        );
+      }
+      break;
+
+    case "lastsong":
+    case "lasttrack":
+    case "lastmusic":
+      /**
+       * This is a command to get the last song played
+       * with aliases like "lastsong", "lasttrack", "lastmusic"
+       * returns "Last Played: <song name> by <artist> from the album <album> | URL: <url>"
+       */
+      try {
+        const lastSongData = await prisma.playedSongs.findMany({
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 2,
+        });
+
+        if (!lastSongData || lastSongData.length < 2) {
+          client.say(
+            channel,
+            `No previous song has been played or added to the database.`
+          );
+        } else {
+          client.say(
+            channel,
+            `Last Played: ${lastSongData[1].name} by ${lastSongData[1].artist} from the album ${lastSongData[1].album} | URL: ${lastSongData[1].url}`
+          );
+        }
+      } catch (error) {
+        consola.error("Error fetching last song:", error);
+        client.say(
+          channel,
+          `@${tags.username}, An error occurred while fetching the last song. Please try again later.`
+        );
+      }
+      break;
+
+    default:
+      consola.info(
+        `Command not recognized: ${command} in channel ${channel} from ${tags.username}`
       );
-    return client.say(
-      channel,
-      `Now Playing: ${currentSong.name} by ${currentSong.artist} from the album ${currentSong.album} | URL: ${currentSong.url}`
-    );
+      break;
   }
+});
 
-  /**
-   * This is a command to get the last song played
-   * with aliases like "lastsong", "lasttrack", "lastmusic"
-   * returns "Last Played: <song name> by <artist> from the album <album> | URL: <url>"
-   */
-  const lastSongAliases = ["lastsong", "lasttrack", "lastmusic"];
-  if (lastSongAliases.some((alias) => message.toLowerCase().includes(alias))) {
-    const lastSongData = await prisma.playedSongs.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    const lastSong = lastSongData[1];
-
-    if (!lastSongData)
-      return client.say(
-        channel,
-        `No song has been played or it has not been added to the database.`
-      );
-    return client.say(
-      channel,
-      `Last Played: ${lastSong.name} by ${lastSong.artist} from the album ${lastSong.album} | URL: ${lastSong.url}`
-    );
-  }
+client.on("connected", (addr, port) => {
+  consola.success(`Connected to Twitch: ${addr}:${port}`);
 });
 
 /**
  * Connect to Cid's WebSocket Server
  */
-
-// client.js
-import { io } from "socket.io-client";
 
 // Connect to the Socket.IO server
 const socket = io("http://localhost:10767", {
@@ -150,29 +195,46 @@ const socket = io("http://localhost:10767", {
 
 // Event listener for connection
 socket.on("connect", () => {
-  console.log("Connected to the server");
+  consola.success("Connected to the Cider WebSocket server");
 });
 
 // Event listener for messages from the server
-socket.on("API:Playback", async (data: { type: any; data: MusicData }) => {
+socket.on("API:Playback", async (data: { type: string; data: TrackData }) => {
   if (data.type === "playbackStatus.nowPlayingItemDidChange") {
-    await prisma.playedSongs.create({
-      data: {
-        name: data.data.name,
-        artist: data.data.artistName,
-        album: data.data.albumName,
-        url: data.data.url,
-      },
-    });
+    const trackData = data.data;
+    const region = "us"; // Or any desired region code
+    const trackCatalogId = trackData.playParams.catalogId;
+    const songTitleSlug = trackData.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, ""); // Simple slug generation
+
+    const appleMusicUrl = `https://music.apple.com/${region}/song/${songTitleSlug}/${trackCatalogId}`;
+
+    try {
+      await prisma.playedSongs.create({
+        data: {
+          name: trackData.name,
+          artist: trackData.artistName,
+          album: trackData.albumName,
+          url: appleMusicUrl,
+        },
+      });
+      consola.info(
+        `Added "${trackData.name} by ${trackData.artistName}" to played songs.`
+      );
+    } catch (error) {
+      consola.error("Error adding song to database:", error);
+    }
   }
 });
 
 // Event listener for disconnection
 socket.on("disconnect", () => {
-  console.log("Disconnected from the server");
+  consola.warn("Disconnected from the Cider WebSocket server");
 });
 
 // Event listener for errors
 socket.on("error", (error: any) => {
-  console.error("Socket.IO error:", error);
+  consola.error("Socket.IO error:", error);
 });
