@@ -119,7 +119,7 @@ client.on("message", async (channel, tags, message, self) => {
         if (!currentSong) {
           client.say(
             channel,
-            `No song is currently playing or it has not been added to the database.`
+            `@${tags.username}, No song is currently playing or it has not been added to the database.`
           );
         } else {
           client.say(
@@ -131,7 +131,7 @@ client.on("message", async (channel, tags, message, self) => {
         consola.error("Error fetching current song:", error);
         client.say(
           channel,
-          `An error occurred while fetching the current song. Please try again later.`
+          `@${tags.username}, An error occurred while fetching the current song. Please try again later.`
         );
       }
       break;
@@ -155,7 +155,7 @@ client.on("message", async (channel, tags, message, self) => {
         if (!lastSongData || lastSongData.length < 2) {
           client.say(
             channel,
-            `No previous song has been played or added to the database.`
+            `@${tags.username}, No previous song has been played or added to the database.`
           );
         } else {
           client.say(
@@ -217,7 +217,7 @@ socket.on("API:Playback", async (data: { type: string; data: TrackData }) => {
           name: trackData.name,
           artist: trackData.artistName,
           album: trackData.albumName,
-          url: appleMusicUrl,
+          url: appleMusicUrl || "No URL provided",
         },
       });
       consola.info(
