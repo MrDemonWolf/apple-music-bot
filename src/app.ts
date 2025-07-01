@@ -3,54 +3,7 @@ import consola from "consola"; // Import consola
 import { env } from "./utils/env";
 import { prismaConnect, prisma } from "./database";
 import { io } from "socket.io-client";
-
-/**
- * Type for cider player data
- */
-interface Artwork {
-  width: number;
-  url: string;
-  height: number;
-  textColor3: string;
-  textColor2: string;
-  textColor4: string;
-  textColor1: string;
-  bgColor: string;
-  hasP3: boolean;
-}
-
-interface PlayParams {
-  id: string;
-  kind: string;
-  isLibrary: boolean;
-  reporting: boolean;
-  catalogId: string;
-  reportingId: string;
-}
-
-// Based on the provided data, the preview object is empty.
-// If there are actual properties in the preview, you would add them here.
-interface Preview {}
-
-interface TrackData {
-  albumName: string;
-  discNumber: number;
-  genreNames: string[];
-  hasLyrics: boolean;
-  trackNumber: number;
-  releaseDate: string;
-  durationInMillis: number;
-  name: string;
-  artistName: string;
-  contentRating: string;
-  artwork: Artwork;
-  playParams: PlayParams;
-  composerName?: string;
-  isrc?: string;
-  previews: Preview[];
-  currentPlaybackTime: number;
-  remainingTime: number;
-}
+import { TrackData } from "./types/TrackData";
 
 /**
  * Import Environment variables
